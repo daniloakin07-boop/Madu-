@@ -9,8 +9,8 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const MODEL = 'claude-sonnet-5';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MODEL = 'gemini-2.5-flash';
 
 // Esse é o "cérebro" do madu: recebe a foto e devolve texto lido,
 // explicação do contexto e as 3 sugestões de resposta, tudo em um
@@ -43,38 +43,31 @@ app.post('/analyze-image', async (req, res) => {
       return res.status(400).json({ error: 'image_base64 é obrigatório' });
     }
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: media_type || 'image/jpeg',
-                  data: image_base64,
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inline_data: {
+                    mime_type: media_type || 'image/jpeg',
+                    data: image_base64,
+                  },
                 },
-              },
-              {
-                type: 'text',
-                text: 'Analise essa imagem seguindo as instruções do sistema e devolva apenas o JSON.',
-              },
-            ],
-          },
-        ],
-      }),
-    });
+                { text: 'Analise essa imagem seguindo as instruções do sistema e devolva apenas o JSON.' },
+              ],
+            },
+          ],
+          generationConfig: { response_mime_type: 'application/json' },
+        }),
+      }
+    );
 
     const data = await response.json();
 
@@ -83,7 +76,7 @@ app.post('/analyze-image', async (req, res) => {
       return res.status(502).json({ error: 'Falha ao processar a imagem' });
     }
 
-    const rawText = data.content?.find((b) => b.type === 'text')?.text || '';
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     // a IA foi instruída a devolver só JSON, mas por segurança removemos
     // possíveis blocos de markdown (```json ... ```) antes de fazer o parse
