@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>madu — lê a mensagem, transforma em áudio</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
+<meta name="theme-color" content="#170a30">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #170a30;
+    --surface: #221142;
+    --surface-2: #2c1854;
+    --accent: #8b7fe8;
+    --accent-light: #cbc3fa;
+    --accent-dim: #4a3f8a;
+    --text-primary: #f5f2ff;
+    --text-secondary: #a89bd6;
+    --text-muted: #6f6299;
+  }
+  * { box-sizing: border-box; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: radial-gradient(ellipse at 50% -10%, #2c1854 0%, #170a30 55%);
+    color: var(--text-primary);
+    display: flex;
+    justify-content: center;
+    padding: 32px 18px 48px;
+    margin: 0;
+    min-height: 100vh;
+  }
+  .card { width: 100%; max-width: 420px; }
+
+  /* header */
+  header { text-align: center; margin-bottom: 28px; }
+  .wordmark {
+    font-family: 'Fraunces', serif;
+    font-size: 40px;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .wordmark span { color: var(--accent-light); }
+  .tagline {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 6px 0 0;
+    letter-spacing: 0.2px;
+  }
+
+  /* signature: pulsing voice orb */
+  .orb-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0 28px;
+  }
+  .orb-btn {
+    position: relative;
+    width: 148px;
+    height: 148px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .orb-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid var(--accent-dim);
+    animation: pulse 2.6s ease-out infinite;
+  }
+  .orb-ring:nth-child(2) { animation-delay: 0.9s; }
+  .orb-ring:nth-child(3) { animation-delay: 1.8s; }
+  @keyframes pulse {
+    0% { transform: scale(0.72); opacity: 0.9; }
+    100% { transform: scale(1.15); opacity: 0; }
+  }
+  .orb-core {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    border-radius: 50%;
+    background: linear-gradient(160deg, var(--accent) 0%, #5a4fb0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .orb-core svg { width: 40px; height: 40px; }
+  #camera-input { display: none; }
+  .orb-label {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: -18px;
+    margin-bottom: 4px;
+  }
+
+  #preview {
+    width: 100%;
+    border-radius: 16px;
+    margin-top: 4px;
+    display: none;
+    border: 1px solid var(--surface-2);
+  }
+
+  #status {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .dot-flash { display: flex; gap: 4px; }
+  .dot-flash span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: blink 1.2s infinite ease-in-out;
+  }
+  .dot-flash span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-flash span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+  .result-box {
+    margin-top: 24px;
+    display: none;
+  }
+  .result-box section { margin-bottom: 22px; }
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .body-text {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .explain-card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 16px 18px;
+    border-left: 2px solid var(--accent);
+  }
+  .audio-controls { display: flex; gap: 8px; margin-top: 12px; }
+  .icon-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border: none;
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .icon-btn:active { background: var(--accent-dim); }
+  .icon-btn svg { width: 14px; height: 14px; }
+
+  .tone-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--surface-2);
+    color: var(--text-primary);
+    padding: 14px 16px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .tone-btn:hover { border-color: var(--accent-dim); }
+  .tone-btn:active { background: var(--surface-2); }
+  .tone-name { font-weight: 500; }
+  .tone-btn svg { width: 16px; height: 16px; color: var(--accent-light); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="card">
+  <header>
+    <h1 class="wordmark">mad<span>ú</span></h1>
+    <p class="tagline">lê a mensagem, transforma em áudio</p>
+  </header>
+
+  <div class="orb-wrap">
+    <label class="orb-btn" for="camera-input" aria-label="Tirar foto do texto">
+      <span class="orb-ring"></span>
+      <span class="orb-ring"></span>
+      <span class="orb-ring"></span>
+      <span class="orb-core">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#f5f2ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 8a2 2 0 0 1 2-2h1.2a1 1 0 0 0 .9-.55l.6-1.2A1 1 0 0 1 9.6 3.7h4.8a1 1 0 0 1 .9.55l.6 1.2a1 1 0 0 0 .9.55H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z"/>
+          <circle cx="12" cy="13" r="3.4"/>
+        </svg>
+      </span>
+    </label>
+  </div>
+  <p class="orb-label">toque para fotografar um texto</p>
+  <input id="camera-input" type="file" accept="image/*" capture="environment">
+
+  <img id="preview" alt="Pré-visualização da foto capturada">
+
+  <div id="status">
+    <span class="dot-flash"><span></span><span></span><span></span></span>
+    lendo o texto...
+  </div>
+
+  <div class="result-box" id="result-box">
+    <section>
+      <p class="eyebrow">O que a IA leu</p>
+      <p class="body-text" id="texto-lido"></p>
+    </section>
+
+    <section>
+      <p class="eyebrow">Explicação</p>
+      <div class="explain-card">
+        <p class="body-text" id="explicacao" style="font-size:15px;"></p>
+      </div>
+      <div class="audio-controls">
+        <button class="icon-btn" id="speak-explain-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+          ouvir
+        </button>
+        <button class="icon-btn" id="stop-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+          parar
+        </button>
+      </div>
+    </section>
+
+    <section id="tones-section">
+      <p class="eyebrow">Sugestões de resposta</p>
+      <button class="tone-btn" data-tone="educada"><span class="tone-name">Educada</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <button class="tone-btn" data-tone="amigavel"><span class="tone-name">Amigável</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <button class="tone-btn" data-tone="formal"><span class="tone-name">Formal</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </section>
+  </div>
+</div>
+
+<script>
+const BACKEND_URL = window.location.origin;
+
+const input = document.getElementById('camera-input');
+const preview = document.getElementById('preview');
+const status = document.getElementById('status');
+const resultBox = document.getElementById('result-box');
+const textoLidoEl = document.getElementById('texto-lido');
+const explicacaoEl = document.getElementById('explicacao');
+const tonesSection = document.getElementById('tones-section');
+
+let ultimaResposta = null;
+
+input.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  status.style.display = 'flex';
+  resultBox.style.display = 'none';
+
+  const base64 = await fileToBase64(file);
+
+  try {
+    const res = await fetch(BACKEND_URL + '/analyze-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64: base64, media_type: file.type || 'image/jpeg' }),
+    });
+    const data = await res.json();
+    status.style.display = 'none';
+
+    if (!res.ok) {
+      alert('Erro: ' + (data.error || 'falha ao processar'));
+      return;
+    }
+
+    ultimaResposta = data;
+    textoLidoEl.textContent = data.texto_lido || '(nenhum texto encontrado)';
+    explicacaoEl.textContent = data.explicacao || '';
+    tonesSection.style.display = data.sugestoes ? 'block' : 'none';
+    resultBox.style.display = 'block';
+
+    falar(data.explicacao);
+  } catch (err) {
+    status.style.display = 'none';
+    alert('Não consegui conectar ao servidor. Confira se o backend está rodando.');
+    console.error(err);
+  }
+});
+
+document.getElementById('speak-explain-btn').addEventListener('click', () => {
+  if (ultimaResposta) falar(ultimaResposta.explicacao);
+});
+
+document.getElementById('stop-btn').addEventListener('click', () => {
+  window.speechSynthesis.cancel();
+});
+
+document.querySelectorAll('.tone-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (!ultimaResposta || !ultimaResposta.sugestoes) return;
+    const texto = ultimaResposta.sugestoes[btn.dataset.tone];
+    if (texto) falar(texto);
+  });
+});
+
+function falar(texto) {
+  if (!texto) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(texto);
+  utter.lang = 'pt-BR';
+  window.speechSynthesis.speak(utter);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
+</script>
+</body>
+</html>

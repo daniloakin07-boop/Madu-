@@ -1,0 +1,15 @@
+{
+  "name": "madu — lê a mensagem, transforma em áudio",
+  "short_name": "madu",
+  "description": "Aplicativo de acessibilidade que fotografa um texto, lê em voz alta, explica o contexto e sugere respostas.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#170a30",
+  "theme_color": "#170a30",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
