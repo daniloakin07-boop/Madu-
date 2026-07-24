@@ -10,7 +10,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = 'gemini-2.5-flash';
+const MODEL = 'gemini-3.5-flash-lite';
 
 // Esse é o "cérebro" do madu: recebe a foto e devolve texto lido,
 // explicação do contexto e as 3 sugestões de resposta, tudo em um
